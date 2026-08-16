@@ -59,7 +59,18 @@ public class VirtualPad : MonoBehaviour
         if (moveInput.sqrMagnitude > 0.01f)
         {
             moveInput = moveInput.normalized;
-            Vector3 movement = new Vector3(moveInput.x, 0f, moveInput.y);
+
+            // Obtener la orientación horizontal (XZ) de la cámara
+            Vector3 camForward = camara.transform.forward;
+            Vector3 camRight = camara.transform.right;
+
+            camForward.y = 0f;
+            camRight.y = 0f;
+            camForward.Normalize();
+            camRight.Normalize();
+
+            // Calcular el vector de movimiento según hacia dónde mira la cámara
+            Vector3 movement = camForward * moveInput.y + camRight * moveInput.x;
             character.transform.Translate(movement * speed * Time.deltaTime, Space.World);
         }
     }
