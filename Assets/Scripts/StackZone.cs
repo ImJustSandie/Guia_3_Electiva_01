@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 using System.Collections.Generic;
 
 // Colocar en el objeto del Punto B, con un Collider (puede ser trigger) que
@@ -8,6 +9,19 @@ public class StackZone : MonoBehaviour
     [SerializeField] private float cubeHeight = 1f;       // alto de cada cubo (ajusta a tu escala)
     [SerializeField] private float placementRadius = 0.6f; // tolerancia horizontal para "encajar"
     [SerializeField] private int maxCubes = 4;
+
+    [Header("Objetos / Eventos al Completar")]
+    [Tooltip("Objeto que desaparecerá automáticamente al completar los cubos requeridos.")]
+    [SerializeField] private GameObject objectToDisappear;
+
+    [Tooltip("Temporizador opcional que se detendrá automáticamente al completar la pila de cubos.")]
+    [SerializeField] private SceneTimer timerToStop;
+
+    [Tooltip("Si es true y no se asignó timerToStop, buscará automáticamente el SceneTimer activo en la escena.")]
+    [SerializeField] private bool autoStopSceneTimer = true;
+
+    [Tooltip("Eventos de Unity opcionales al completar la pila de cubos.")]
+    [SerializeField] private UnityEvent onStackCompleted;
 
     [Header("Feedback visual")]
     [SerializeField] private Renderer zoneRenderer;
@@ -61,12 +75,50 @@ public class StackZone : MonoBehaviour
         placedCubes.Add(cube);
 
         if (placedCubes.Count >= maxCubes)
+        {
+            if (objectToDisappear != null)
+            {
+                objectToDisappear.SetActive(false);
+            }
+
+            // Detener el temporizador de la escena
+            StopTimerIfPresent();
+
             SendMessage("OnStackCompleted", SendMessageOptions.DontRequireReceiver);
+            onStackCompleted?.Invoke();
+        }
+    }
+
+    private void StopTimerIfPresent()
+    {
+        if (timerToStop != null)
+        {
+            timerToStop.StopTimer();
+        }
+        else if (autoStopSceneTimer)
+        {
+            if (SceneTimer.Instance != null)
+            {
+                SceneTimer.Instance.StopTimer();
+            }
+            else
+            {
+                SceneTimer timer = FindObjectOfType<SceneTimer>();
+                if (timer != null)
+                {
+                    timer.StopTimer();
+                }
+            }
+        }
     }
 
     // Útil para reiniciar la prueba entre usuarios
     public void ResetZone()
     {
         placedCubes.Clear();
+        if (objectToDisappear != null)
+        {
+            objectToDisappear.SetActive(true);
+        }
     }
 }

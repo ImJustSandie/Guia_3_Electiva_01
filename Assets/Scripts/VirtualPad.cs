@@ -41,6 +41,13 @@ public class VirtualPad : MonoBehaviour
         moveAction = playerInput.actions["Move"];
         if (moveAction == null)
             Debug.LogError("VirtualPad: no existe la accion 'Move' en la InputActionAsset.");
+
+        if (camara != null)
+        {
+            Vector3 currentAngles = camara.transform.eulerAngles;
+            yaw = currentAngles.y;
+            pitch = currentAngles.x > 180f ? currentAngles.x - 360f : currentAngles.x;
+        }
     }
 
     void Update()
