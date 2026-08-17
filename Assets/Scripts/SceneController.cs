@@ -51,13 +51,41 @@ public class SceneChanger : MonoBehaviour
     [Tooltip("Tiempo de espera opcional (segundos) antes de cargar la escena")]
     [SerializeField] private float delaySegundos = 0f;
 
+    [Header("Requisito para activar")]
+    [Tooltip("Si se asigna, la salida solo se habilitará cuando esta zona tenga apilados los cubos necesarios (IsFull). Dejar vacío para activar siempre.")]
+    [SerializeField] private StackZone zonaRequerida;
+
+    [Header("Cooldown de Escena")]
+    [Tooltip("Tiempo (segundos) al iniciar la escena durante el cual el botón queda bloqueado para evitar pulsaciones accidentales")]
+    [SerializeField] private float cooldownSegundos = 2f;
+
     private bool yaCambiando = false;
+    private bool objetoCorrectoDentro = false;
+    private bool cooldownActivo = true;
+
+    private void Start()
+    {
+        Invoke(nameof(FinalizarCooldown), cooldownSegundos);
+    }
+
+    /// <summary>
+    /// Habilita el cambio de escena una vez transcurrido el cooldown inicial.
+    /// </summary>
+    private void FinalizarCooldown()
+    {
+        cooldownActivo = false;
+    }
 
     /// <summary>
     /// Carga la escena configurada en el inspector.
     /// </summary>
     public void CambiarEscena()
     {
+        if (cooldownActivo)
+        {
+            Debug.Log($"[SceneChanger] Botón bloqueado en cooldown. Espera {cooldownSegundos} segundos al iniciar la escena.");
+            return;
+        }
         if (yaCambiando) return;
 
         if (string.IsNullOrEmpty(nombreEscena))
@@ -82,6 +110,7 @@ public class SceneChanger : MonoBehaviour
     /// </summary>
     public void CambiarEscena(string nombreDeEscena)
     {
+        if (cooldownActivo) return;
         if (yaCambiando) return;
         if (string.IsNullOrEmpty(nombreDeEscena)) return;
 
@@ -94,6 +123,21 @@ public class SceneChanger : MonoBehaviour
         SceneManager.LoadScene(nombreEscena);
     }
 
+    /// <summary>
+    /// Evalúa si se cumplen todas las condiciones para poder cambiar de escena.
+    /// Si hay una zona requerida y aún no está completa, no hace nada.
+    /// </summary>
+    private void EvaluarSalida()
+    {
+        if (yaCambiando) return;
+
+        // Si se configuró una zona y no están apilados todos los cubos, el trigger no hace nada.
+        if (zonaRequerida != null && !zonaRequerida.IsFull)
+            return;
+
+        CambiarEscena();
+    }
+
     // Detectar colisiones físicas (3D)
     private void OnCollisionEnter(Collision collision)
     {
@@ -101,19 +145,33 @@ public class SceneChanger : MonoBehaviour
 
         if (EsObjetoCorrecto(collision.gameObject))
         {
-            CambiarEscena();
+            objetoCorrectoDentro = true;
+            EvaluarSalida();
         }
+    }
+
+    private void OnCollisionExit(Collision collision)
+    {
+        if (EsObjetoCorrecto(collision.gameObject))
+            objetoCorrectoDentro = false;
     }
 
     // Detectar triggers (3D)
     private void OnTriggerEnter(Collider other)
     {
-        if (!cambiarPorColision || yaCambiando) return;
+        if (!cambiarPorColision) return;
 
         if (EsObjetoCorrecto(other.gameObject))
         {
-            CambiarEscena();
+            objetoCorrectoDentro = true;
+            EvaluarSalida();
         }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if (EsObjetoCorrecto(other.gameObject))
+            objetoCorrectoDentro = false;
     }
 
     // Detectar colisiones físicas (2D) por compatibilidad
@@ -123,19 +181,41 @@ public class SceneChanger : MonoBehaviour
 
         if (EsObjetoCorrecto(collision.gameObject))
         {
-            CambiarEscena();
+            objetoCorrectoDentro = true;
+            EvaluarSalida();
         }
+    }
+
+    private void OnCollisionExit2D(Collision2D collision)
+    {
+        if (EsObjetoCorrecto(collision.gameObject))
+            objetoCorrectoDentro = false;
     }
 
     // Detectar triggers (2D) por compatibilidad
     private void OnTriggerEnter2D(Collider2D other)
     {
-        if (!cambiarPorColision || yaCambiando) return;
+        if (!cambiarPorColision) return;
 
         if (EsObjetoCorrecto(other.gameObject))
         {
-            CambiarEscena();
+            objetoCorrectoDentro = true;
+            EvaluarSalida();
         }
+    }
+
+    private void OnTriggerExit2D(Collider2D other)
+    {
+        if (EsObjetoCorrecto(other.gameObject))
+            objetoCorrectoDentro = false;
+    }
+
+    private void Update()
+    {
+        // Si el jugador permanece dentro del trigger y la zona se completa después
+        // (p.ej. apila el último cubo sin salir), la salida se activa igualmente.
+        if (objetoCorrectoDentro)
+            EvaluarSalida();
     }
 
     /// <summary>

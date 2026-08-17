@@ -15,6 +15,8 @@ public class VirtualPad : MonoBehaviour
     private PlayerInput playerInput;
     private InputAction moveAction;
     private Vector2 moveInput;
+    private Rigidbody rb;
+    private Vector3 desiredMove;
 
     private float pitch;
     private float yaw;
@@ -42,6 +44,10 @@ public class VirtualPad : MonoBehaviour
         if (moveAction == null)
             Debug.LogError("VirtualPad: no existe la accion 'Move' en la InputActionAsset.");
 
+        rb = character != null ? character.GetComponent<Rigidbody>() : null;
+        if (rb == null)
+            Debug.LogError("VirtualPad: el personaje no tiene un Rigidbody asignado.");
+
         if (camara != null)
         {
             Vector3 currentAngles = camara.transform.eulerAngles;
@@ -56,10 +62,20 @@ public class VirtualPad : MonoBehaviour
             return;
 
         RotateCameraFromTouch();
-        MoveCharacter();
+        ReadMoveInput();
     }
 
-    void MoveCharacter()
+    void FixedUpdate()
+    {
+        if (rb == null)
+            return;
+
+        Vector3 current = rb.linearVelocity;
+        current.y = 0f;
+        rb.AddForce(desiredMove - current, ForceMode.VelocityChange);
+    }
+
+    void ReadMoveInput()
     {
         moveInput = moveAction.ReadValue<Vector2>();
 
@@ -76,9 +92,12 @@ public class VirtualPad : MonoBehaviour
             camForward.Normalize();
             camRight.Normalize();
 
-            // Calcular el vector de movimiento según hacia dónde mira la cámara
-            Vector3 movement = camForward * moveInput.y + camRight * moveInput.x;
-            character.transform.Translate(movement * speed * Time.deltaTime, Space.World);
+            // Velocidad horizontal objetivo según hacia dónde mira la cámara
+            desiredMove = (camForward * moveInput.y + camRight * moveInput.x) * speed;
+        }
+        else
+        {
+            desiredMove = Vector3.zero;
         }
     }
 

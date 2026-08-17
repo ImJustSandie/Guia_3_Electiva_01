@@ -34,6 +34,7 @@ public class StackZone : MonoBehaviour
     private readonly List<CubeItem> placedCubes = new List<CubeItem>();
 
     public int PlacedCount => placedCubes.Count;
+    public int MaxCount => maxCubes;
     public bool IsFull => placedCubes.Count >= maxCubes;
 
     private void Awake()
